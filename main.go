@@ -19,7 +19,7 @@ type Gene struct {
 }
 
 type Result struct {
-	fitness float32
+	fitness float64
 	genome  []Gene
 	out     image.Image
 }
@@ -27,9 +27,9 @@ type Result struct {
 var (
 	initialGenes int
 	population   int
-	mutationProb float32
-	addProb      float32
-	removeProb   float32
+	mutationProb float64
+	addProb      float64
+	removeProb   float64
 
 	minRadius int
 	maxRadius int
@@ -46,75 +46,75 @@ var (
 	wg sync.WaitGroup
 
 	genome []Gene
-	out image.Image
+	out    image.Image
 )
 
 func (g Gene) init() Gene {
-	g.Radius = rand.Intn(maxRadius-minRadius) + minRadius
-	g.Center = [2]int{rand.Intn(width), rand.Intn(height)}
+	g.Radius = rand.Intn(maxRadius-minRadius+1) + minRadius
+	g.Center = [2]int{rand.Intn(width + 1), rand.Intn(height + 1)}
 	g.Color.R, g.Color.G, g.Color.B, g.Color.A = uint8(rand.Intn(256)), uint8(rand.Intn(256)), uint8(rand.Intn(256)), 255
 	return g
 }
 
-func (g Gene) MutateRadius(mutationSize float32) int {
-	max := float32(g.Radius) * (1 + mutationSize)
-	min := float32(g.Radius) * (1 - mutationSize)
-	if int(max-min) == 0 {
-		g.Radius = int(min)
+func (g Gene) MutateRadius(mutationSize float64) int {
+	max := int(math.Floor(float64(g.Radius) * (1 + mutationSize)))
+	min := int(math.Ceil(float64(g.Radius) * (1 - mutationSize)))
+	if max-min == 0 {
+		g.Radius = min
 	} else {
-		g.Radius = rand.Intn(int(max-min)) + int(min)
+		g.Radius = rand.Intn(max-min+1) + min
 	}
 	g.Radius = Clip(g.Radius, 1, 100)
 	return g.Radius
 }
 
-func (g Gene) MutateCenter(mutationSize float32) [2]int {
-	min0, max0 := float32(g.Center[0])*(1-mutationSize), float32(g.Center[0])*(1+mutationSize)
-	min1, max1 := float32(g.Center[1])*(1-mutationSize), float32(g.Center[1])*(1+mutationSize)
+func (g Gene) MutateCenter(mutationSize float64) [2]int {
+	min0, max0 := int(math.Ceil(float64(g.Center[0])*(1-mutationSize))), int(math.Floor(float64(g.Center[0])*(1+mutationSize)))
+	min1, max1 := int(math.Ceil(float64(g.Center[1])*(1-mutationSize))), int(math.Floor(float64(g.Center[1])*(1+mutationSize)))
 
-	if int(max0-min0) == 0 {
-		g.Center[0] = int(min0)
+	if max0-min0 == 0 {
+		g.Center[0] = min0
 	} else {
-		g.Center[0] = rand.Intn(int(max0-min0)) + int(min0)
+		g.Center[0] = rand.Intn(max0-min0+1) + min0
 	}
 
-	if int(max1-min1) == 0 {
-		g.Center[1] = int(min1)
+	if max1-min1 == 0 {
+		g.Center[1] = min1
 	} else {
-		g.Center[1] = rand.Intn(int(max1-min1)) + int(min1)
+		g.Center[1] = rand.Intn(max1-min1+1) + min1
 	}
 
 	g.Center = [2]int{
 		Clip(g.Center[0], 0, width),
-		Clip(g.Center[1], 0, width)}
+		Clip(g.Center[1], 0, height)}
 
 	return g.Center
 }
 
-func (g Gene) MutateColor(mutationSize float32) color.RGBA {
+func (g Gene) MutateColor(mutationSize float64) color.RGBA {
 	cR := int(g.Color.R)
 	cG := int(g.Color.G)
 	cB := int(g.Color.B)
-	minR, maxR := float32(cR)*(1-mutationSize), float32(cR)*(1+mutationSize)
-	minG, maxG := float32(cG)*(1-mutationSize), float32(cG)*(1+mutationSize)
-	minB, maxB := float32(cB)*(1-mutationSize), float32(cB)*(1+mutationSize)
+	minR, maxR := int(math.Ceil(float64(cR)*(1-mutationSize))), int(math.Floor(float64(cR)*(1+mutationSize)))
+	minG, maxG := int(math.Ceil(float64(cG)*(1-mutationSize))), int(math.Floor(float64(cG)*(1+mutationSize)))
+	minB, maxB := int(math.Ceil(float64(cB)*(1-mutationSize))), int(math.Floor(float64(cB)*(1+mutationSize)))
 
-	if int(maxR-minR) == 0 {
+	if maxR-minR == 0 {
 		g.Color.R = uint8(minR)
 	} else {
-		g.Color.R = uint8(rand.Intn(int(maxR-minR)) + int(minR))
+		g.Color.R = uint8(rand.Intn(maxR-minR+1) + minR)
 	}
 
-	if int(maxG-minG) == 0 {
+	if maxG-minG == 0 {
 		g.Color.G = uint8(minG)
 	} else {
-		g.Color.G = uint8(rand.Intn(int(maxG-minG)) + int(minG))
+		g.Color.G = uint8(rand.Intn(maxG-minG+1) + minG)
 	}
 
-	if int(maxB-minB) == 0 {
+	if maxB-minB == 0 {
 		g.Color.B = uint8(minB)
 	} else {
-		g.Color.B = uint8(rand.Intn(int(maxB-minB)) + int(minB))
+		g.Color.B = uint8(rand.Intn(maxB-minB+1) + minB)
 	}
 
 	g.Color.R = uint8(Clip(int(g.Color.R), 0, 255))
@@ -125,7 +125,7 @@ func (g Gene) MutateColor(mutationSize float32) color.RGBA {
 }
 
 func (g Gene) Mutate() Gene {
-	mutationSize := float32(math.Max(1, math.Round(rand.NormFloat64()*4+15))) / 100
+	mutationSize := float64(math.Max(1, math.Round(rand.NormFloat64()*4+15))) / 100
 
 	r := rand.Float64()
 
@@ -139,8 +139,8 @@ func (g Gene) Mutate() Gene {
 	return g
 }
 
-func ComputeFitness(genome []Gene) (float32, image.Image) {
-	var fitness float32
+func ComputeFitness(genome []Gene) (float64, image.Image) {
+	var fitness float64
 	out := image.NewRGBA(image.Rect(0, 0, width, height))
 
 	UnTransparent(out)
@@ -151,7 +151,7 @@ func ComputeFitness(genome []Gene) (float32, image.Image) {
 
 	if img, ok := img.(*image.RGBA); ok {
 		compVal, _ := CompareImage(img, out)
-		fitness = 255 / float32(compVal)
+		fitness = 255 / float64(compVal)
 	}
 	return fitness, out
 }
@@ -180,22 +180,22 @@ func ComputePopulation(gnm []Gene) Result {
 
 	if len(genome) < 200 {
 		for _, g := range genome {
-			if rand.Float32() < mutationProb {
+			if rand.Float64() < mutationProb {
 				g = g.Mutate()
 			}
 		}
 	} else {
-		mut := RandomSampleGene(genome, int(float32(len(genome))*mutationProb))
+		mut := RandomSampleGene(genome, int(float64(len(genome))*mutationProb))
 		for _, g := range mut {
 			g = g.Mutate()
 		}
 	}
 
-	if rand.Float32() < addProb {
+	if rand.Float64() < addProb {
 		genome = append(genome, gene)
 	}
 
-	if len(genome) > 0 && rand.Float32() < removeProb {
+	if len(genome) > 0 && rand.Float64() < removeProb {
 		genome = RemoveGene(genome, rand.Intn(len(genome)))
 	}
 
@@ -230,7 +230,7 @@ func main() {
 
 	initialGenes = 50
 	population = 50
-	mutationProb = 0.01
+	mutationProb = 0.05
 	addProb = 0.3
 	removeProb = 0.2
 
@@ -259,13 +259,14 @@ func main() {
 
 	_, out = ComputeFitness(genome)
 
-	for gen < 2000 {
+	for gen < 1000 {
 
 		genomes := make(chan []Gene, population)
 		results := make(chan Result, population)
 
 		for i := 0; i < population; i++ {
-			genomes <- genome
+			j := genome
+			genomes <- j
 		}
 
 		for w := 0; w < workers; w++ {
@@ -274,10 +275,6 @@ func main() {
 		}
 
 		wg.Wait()
-
-		//for r := 0; r < population; r++ {
-		//	<-results
-		//} )
 
 		findBest(results)
 
@@ -289,6 +286,12 @@ func main() {
 
 		gen++
 		fmt.Printf("Currently on generation %d, fitness %.6f\n", gen, best.fitness)
+
+		if gen%100 == 0 {
+			genoutput, _ := os.Create(fmt.Sprintf("result/gen%d.png", gen))
+			png.Encode(genoutput, out)
+		}
+
 	}
 	output, _ := os.Create("testsave.png")
 	err := png.Encode(output, out)

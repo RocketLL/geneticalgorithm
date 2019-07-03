@@ -5,7 +5,6 @@ import (
 	"image"
 	"image/color"
 	"image/draw"
-	"math"
 )
 
 func DrawCircle(img draw.Image, x0, y0, r int, c color.Color) {
@@ -64,35 +63,35 @@ func UnTransparent(img draw.Image) {
 //	return int64(math.Sqrt(float64(accumError))), nil
 //}
 
-func CompareImage(img1, img2 *image.RGBA) (int64, error) {
-	if img1.Bounds() != img2.Bounds() {
+// func CompareImage(img1, img2 *image.RGBA) (int64, error) {
+// 	if img1.Bounds() != img2.Bounds() {
+// 		return 0, fmt.Errorf("image bounds not equal: %+v, %+v", img1.Bounds(), img2.Bounds())
+// 	}
+
+// 	accumError := int64(0)
+
+// 	for i := 0; i < len(img1.Pix); i++ {
+// 		accumError += int64(sqDiffUInt8(img1.Pix[i], img2.Pix[i]))
+// 	}
+
+// 	return int64(math.Sqrt(float64(accumError))), nil
+// }
+
+func CompareImage(img1, img2 *image.RGBA) (float64, error) {
+	b := img1.Bounds()
+	if b != img2.Bounds() {
 		return 0, fmt.Errorf("image bounds not equal: %+v, %+v", img1.Bounds(), img2.Bounds())
 	}
 
 	accumError := int64(0)
 
 	for i := 0; i < len(img1.Pix); i++ {
-		accumError += int64(sqDiffUInt8(img1.Pix[i], img2.Pix[i]))
+		if i%4 != 3 {
+			err := int64(int(img1.Pix[i]) - int(img2.Pix[i]))
+			accumError += err * err
+		}
 	}
 
-	return int64(math.Sqrt(float64(accumError))), nil
+	mse := float64(accumError) / float64(3*b.Max.X*b.Max.Y)
+	return mse, nil
 }
-
-//func CompareImage(img1, img2 *image.RGBA) (float32, error) {
-//	b := img1.Bounds()
-//	if b != img2.Bounds() {
-//		return 0, fmt.Errorf("image bounds not equal: %+v, %+v", img1.Bounds(), img2.Bounds())
-//	}
-//
-//	accumError := int64(0)
-//
-//	for i := 0; i < len(img1.Pix); i++ {
-//		if i % 4 != 3 {
-//			err := int64(img1.Pix[i] - img2.Pix[i])
-//			accumError += err * err
-//		}
-//	}
-//
-//	mse := float32(accumError) / float32(3 * b.Max.X * b.Max.Y)
-//	return mse, nil
-//}
